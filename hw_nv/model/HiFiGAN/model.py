@@ -11,7 +11,7 @@ class HiFiGANModel(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.config = config
-        self.model_config = config["model"]
+        self.model_config = config["model"]["args"]
 
         self.generator = Generator(self.model_config)
         self.MPD = MultiPeriodDiscriminator(self.model_config)

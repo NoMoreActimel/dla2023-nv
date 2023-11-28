@@ -42,12 +42,14 @@ def main(config):
     # get function handles of loss and metrics
     criterion = {
         "generator": config.init_obj(
-            config["generator_loss"],
-            module_loss
+            config["loss"]["generator"],
+            module_loss,
+            mel_generator=dataloaders["train"].dataset.melspec_generator
         ).to(device),
         "discriminator": config.init_obj(
-            config["discriminator_loss"],
-            module_loss
+            config["loss"]["discriminator"],
+            module_loss,
+            mel_generator=dataloaders["train"].dataset.melspec_generator
         ).to(device)
     }
     metrics = [
@@ -62,12 +64,12 @@ def main(config):
 
     optimizer = {
         "generator": config.init_obj(
-            config["optimizer"],
+            config["optimizer"]["generator"],
             torch.optim,
             generator_params
         ),
         "discriminator": config.init_obj(
-            config["optimizer"],
+            config["optimizer"]["discriminator"],
             torch.optim,
             discriminator_params
         )
@@ -75,12 +77,12 @@ def main(config):
 
     lr_scheduler = {
         "generator": config.init_obj(
-            config["lr_scheduler"],
+            config["lr_scheduler"]["generator"],
             torch.optim.lr_scheduler,
             optimizer["generator"]
         ),
         "discriminator": config.init_obj(
-            config["lr_scheduler"],
+            config["lr_scheduler"]["discriminator"],
             torch.optim.lr_scheduler,
             optimizer["discriminator"]
         )

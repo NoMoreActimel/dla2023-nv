@@ -23,7 +23,8 @@ class Generator(nn.Module):
             apply_weight_norm: whether to apply weight normalization 
             at each Conv1d and ConvTranspose1d layer, default is True
             
-            upsample_strides: list of strides for upsampling ConvTranspose1d blocks
+            upsample_strides: list of strides for upsampling ConvTranspose1d blocks,
+            defaults to [8, 8, 2, 2]
             kernel sizes for ConvTranpose1d blocks would be taken as 2 * upsample_strides
 
             in model_config["generator"]["MRF"]:
