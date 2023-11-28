@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 
 from utils import get_WaveGlow
-import hw_tts.waveglow as waveglow
+import hw_nv.waveglow as waveglow
 
 
 def move_batch_to_device(batch, device: torch.device):
