@@ -57,6 +57,7 @@ class LJspeechMelDataset(BaseDataset):
         
         if self.prep_config.get("preprocess_wavs", True):
             preprocess_wavs_and_texts(
+                raw_data_dir=self.raw_data_dir,
                 data_dir=self.data_dir,
                 sample_rate=self.melspec_config.sr,
                 max_wav_value=self.prep_config["max_wav_value"]
@@ -98,13 +99,14 @@ class LJspeechMelDataset(BaseDataset):
         data_dict = self._index[ind]
         name = data_dict["name"]
 
-        wav = np.load(self.wav_dir / f"{name}.wav")
+        wav, _ = librosa.load(self.wav_dir / f"{name}.wav", sr=self.melspec_config.sr)
         spectrogram = np.load(self.spec_dir / f"{name}_spec.npy")
 
+        wav = torch.from_numpy(wav).float()
         spectrogram = torch.from_numpy(spectrogram).float()
         spec_length = spectrogram.shape[-1]
 
-        print(f"wav length: {data_dict['audio_length']}, spec length: {spec_length}")
+        # print(f"wav length: {data_dict['audio_length']}, spec length: {spec_length}")
 
         return {
             "name": name,
@@ -141,12 +143,10 @@ class LJspeechMelDataset(BaseDataset):
     def collate_fn(self, batch_items):
         batch = {}
         batch["wav"] = [item["wav"] for item in batch_items]
-        batch["mel"] = [item["spectrogram"] for item in batch_items]
+        batch["mel"] = [item["spectrogram"].transpose(1, 2).squeeze(0) for item in batch_items]
         batch["length"] = [item["length"] for item in batch_items]
 
         batch["wav"] = pad_sequence(batch["wav"], batch_first=True)
-        batch["mel"] = pad_sequence(batch["mel"], batch_first=True)
-
-        print(f"Mel shape: {batch['mel'].shape}, length: {batch['length']}")
+        batch["mel"] = pad_sequence(batch["mel"], batch_first=True).transpose(1, 2)
 
         return batch

@@ -5,6 +5,8 @@ import warnings
 import numpy as np
 import torch
 
+from itertools import chain
+
 import hw_nv.loss as module_loss
 import hw_nv.metric as module_metric
 import hw_nv.model as module_arch
@@ -60,7 +62,7 @@ def main(config):
     # build optimizer, learning rate scheduler. delete every line containing lr_scheduler for
     # disabling scheduler
     generator_params = model.generator.parameters()
-    discriminator_params = model.discriminator.parameters()
+    discriminator_params = chain(model.MPD.parameters(), model.MSD.parameters())
 
     optimizer = {
         "generator": config.init_obj(

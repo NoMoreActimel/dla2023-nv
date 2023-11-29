@@ -31,7 +31,7 @@ class BaseDataset(Dataset):
         self.config_parser = config_parser
         self.wave_augs = wave_augs
         self.spec_augs = spec_augs
-        self.log_spec = config_parser["preprocessing"]["log_spec"]
+        self.log_spec = None
 
         # self._assert_index_is_valid(index)
         # index = self._filter_records_from_dataset(index, max_audio_length, max_text_length, limit)
@@ -41,18 +41,7 @@ class BaseDataset(Dataset):
         self._index: List[dict] = index
 
     def __getitem__(self, ind):
-        data_dict = self._index[ind]
-        audio_path = data_dict["path"]
-        audio_wave = self.load_audio(audio_path)
-        audio_wave, audio_spec = self.process_wave(audio_wave)
-        return {
-            "audio": audio_wave,
-            "spectrogram": audio_spec,
-            "duration": audio_wave.size(1) / self.config_parser["preprocessing"]["sr"],
-            "text": data_dict["text"],
-            "text_encoded": self.text_encoder.encode(data_dict["text"]),
-            "audio_path": audio_path,
-        }
+        pass
 
     @staticmethod
     def _sort_index(index):

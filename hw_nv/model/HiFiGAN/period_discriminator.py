@@ -85,7 +85,7 @@ class PeriodDiscriminator(nn.Module):
                     nn.Conv2d(
                         in_channels=channels,
                         out_channels=hidden_channels[ind + 1],
-                        kenrel_size=[kernel_size, 1],
+                        kernel_size=[kernel_size, 1],
                         stride=[stride, 1],
                         padding=[get_padding(kernel_size, 1), 0]
                     ),

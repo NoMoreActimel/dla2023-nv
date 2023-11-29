@@ -104,14 +104,14 @@ class ScaleDiscriminator(nn.Module):
                     nn.Conv1d(
                         in_channels=channels,
                         out_channels=hidden_channels[ind + 1],
-                        kenrel_size=kernel,
+                        kernel_size=kernel,
                         stride=stride,
                         padding=get_padding(kernel, 1),
                         groups=group
                     ),
                     nn.LeakyReLU(0.1)
                 )
-                for ind, (channels, kernel, stride, group) in enumerate(zip(layer_items))
+                for ind, (channels, kernel, stride, group) in enumerate(zip(*layer_items))
             ],
             nn.Conv2d(
                 in_channels=hidden_channels[-1],

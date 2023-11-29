@@ -12,6 +12,7 @@ from hw_nv.utils.text import _clean_text
 def preprocess_wavs_and_texts(raw_data_dir, data_dir, sample_rate, max_wav_value):
     print(f'Processing wav and text data...')
     with open(raw_data_dir / 'metadata.csv', encoding='utf-8') as f:
+        (data_dir / 'wavs').mkdir(exist_ok=True, parents=True)
         for index, line in enumerate(f.readlines()):
             if (index + 1) % 1000 == 0:
                 print(f"{index+1} Done")
@@ -30,11 +31,6 @@ def preprocess_wavs_and_texts(raw_data_dir, data_dir, sample_rate, max_wav_value
                 sample_rate,
                 wav
             )
-
-            text = _clean_text(text, cleaner_names=["english_cleaners"])
-            with open(data_dir / 'texts' / f'{name}.lab', 'w') as text_file:
-                text_file.write(text)
-
 
 def preprocess_mels(data_dir, mel_generator, mel_config):
     print(f'Generating mel-spectograms...')
