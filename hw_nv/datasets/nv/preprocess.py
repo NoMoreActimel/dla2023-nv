@@ -26,9 +26,9 @@ def preprocess_wavs_and_texts(raw_data_dir, data_dir, sample_rate, max_wav_value
 
             wav, _ = librosa.load(wav_path, sr=sample_rate)
             wav = wav / np.abs(wav).max() * max_wav_value
-            
+
             if wav.shape[0] > max_wav_length:
-                left = torch.randint(0, wav.shape[-1] - max_wav_length)
+                left = torch.randint(0, wav.shape[-1] - max_wav_length, (1,))
                 wav = wav[left : left + max_wav_length]
 
             wavfile.write(

@@ -41,6 +41,9 @@ class HiFiGANModel(nn.Module):
     @staticmethod
     def get_number_of_module_parameters(module):
         module_parameters = filter(lambda p: p.requires_grad, module.parameters())
-        params = sum([torch.prod(p.size()) for p in module_parameters])
+        params = sum([
+            torch.prod(torch.LongTensor(p.size())).item()
+            for p in module_parameters
+        ])
         return params
 

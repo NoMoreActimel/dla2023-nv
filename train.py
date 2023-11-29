@@ -41,7 +41,7 @@ def main(config):
     if len(device_ids) > 1:
         model = torch.nn.DataParallel(model, device_ids=device_ids)
     
-    for module_name, n_params in model.get_number_of_parameters():
+    for module_name, n_params in model.get_number_of_parameters().items():
         print(f"Number of {module_name} parameters: {n_params}")
 
     # get function handles of loss and metrics
