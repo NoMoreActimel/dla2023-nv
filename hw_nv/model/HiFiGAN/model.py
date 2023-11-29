@@ -30,3 +30,17 @@ class HiFiGANModel(nn.Module):
                 result[input_type][f"{D_name}_layer_outputs"] = layer_outputs
 
         return result
+
+    def get_number_of_parameters(self):
+        return {
+            "generator": self.get_number_of_module_parameters(self.generator),
+            "MPD": self.get_number_of_module_parameters(self.MPD),
+            "MSD": self.get_number_of_module_parameters(self.MSD)
+        }
+
+    @staticmethod
+    def get_number_of_module_parameters(module):
+        module_parameters = filter(lambda p: p.requires_grad, module.parameters())
+        params = sum([torch.prod(p.size()) for p in module_parameters])
+        return params
+

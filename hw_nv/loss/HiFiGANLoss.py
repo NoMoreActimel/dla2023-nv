@@ -37,15 +37,9 @@ class HiFiGANGeneratorLoss(nn.Module):
         )
         mel_loss = self.alpha_mel_loss * self.mel_loss(mel, mel_generated)
 
-        pmd_fm_loss = sum(
-            self.fm_loss(true_feat, gen_feat)
-            for true_feat, gen_feat in zip(mpd_true_layer_outputs, mpd_gen_layer_outputs)
-        )
-        psd_fm_loss = sum(
-            self.fm_loss(true_feat, gen_feat)
-            for true_feat, gen_feat in zip(msd_true_layer_outputs, msd_gen_layer_outputs)
-        )
-        fm_loss = self.alpha_fm_loss * (pmd_fm_loss + psd_fm_loss)
+        mpd_fm_loss = self.fm_loss(mpd_true_layer_outputs, mpd_gen_layer_outputs)
+        msd_fm_loss = self.fm_loss(msd_true_layer_outputs, msd_gen_layer_outputs)
+        fm_loss = self.alpha_fm_loss * (mpd_fm_loss + msd_fm_loss)
 
         return GAN_loss + mel_loss + fm_loss, GAN_loss, mel_loss, fm_loss
 
