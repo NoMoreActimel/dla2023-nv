@@ -60,7 +60,6 @@ class LJspeechMelDataset(BaseDataset):
                 raw_data_dir=self.raw_data_dir,
                 data_dir=self.data_dir,
                 sample_rate=self.melspec_config.sr,
-                max_wav_value=self.prep_config["max_wav_value"],
                 max_wav_length=self.prep_config["max_wav_length"]
             )
         if self.prep_config.get("generate_mels", True):
