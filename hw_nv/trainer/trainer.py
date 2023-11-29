@@ -59,7 +59,8 @@ class Trainer(BaseTrainer):
         self.log_step = 50
 
         self.train_metrics = MetricTracker(
-            "generator_loss", "GAN_loss", "mel_loss", "fm_loss", "discriminator_loss", 
+            "generator_loss", "GAN_loss", "mel_loss", "fm_loss",
+            "discriminator_loss", "MPD_loss", "MSD_loss", 
             *[m.name for m in self.metrics if self._compute_on_train(m)],
             writer=self.writer
         )
@@ -79,10 +80,10 @@ class Trainer(BaseTrainer):
             batch[tensor_for_gpu] = batch[tensor_for_gpu].to(device)
         return batch
 
-    def _clip_grad_norm(self):
+    def _clip_grad_norm(self, submodel):
         if self.config["trainer"].get("grad_norm_clip", None) is not None:
             clip_grad_norm_(
-                self.model.parameters(), self.config["trainer"]["grad_norm_clip"]
+                submodel.parameters(), self.config["trainer"]["grad_norm_clip"]
             )
 
     def _train_epoch(self, epoch):
@@ -116,7 +117,7 @@ class Trainer(BaseTrainer):
                 else:
                     raise e
             
-            self.train_metrics.update("grad norm", self.get_grad_norm())
+            # self.train_metrics.update("grad norm", self.get_grad_norm())
             if batch_idx % self.log_step == 0:
                 self.writer.set_step((epoch - 1) * self.len_epoch + batch_idx)
                 self.logger.debug(
@@ -137,8 +138,9 @@ class Trainer(BaseTrainer):
 
                 self.writer.add_scalar("generator learning rate", last_lr["generator"])
                 self.writer.add_scalar("discriminator learning rate", last_lr["discriminator"])
-
-                self._log_audio(batch["wav_gen"], "audio generated")
+                
+                self._log_audio(batch["wav_gen"].squeeze(1)[0], "audio generated")
+                self._log_audio(batch["wav"].squeeze(1)[0], "audio target")
                 self._log_scalars(self.train_metrics)
                 # we don't want to reset train metrics at the start of every epoch
                 # because we are interested in recent train metrics
@@ -154,34 +156,46 @@ class Trainer(BaseTrainer):
 
     def process_batch(self, batch, is_train: bool, metrics_tracker: MetricTracker):
         batch = self.move_batch_to_device(batch, self.device)
-        if is_train:
-            self.optimizer["generator"].zero_grad()
-            self.optimizer["discriminator"].zero_grad()
-        
+
         batch["wav_gen"] = self.model(**batch)
-        batch["D_outputs"] = self.model.discriminate(**batch)
+
+        if batch["wav_gen"].shape[-1] != batch["wav"].shape[-1]:
+            batch["wav"], batch["wav_gen"] = self.pad_wavs(batch["wav"], batch["wav_gen"])
         
+        batch["D_outputs"] = self.model.discriminate(**batch)
+
+        if is_train: self.optimizer["discriminator"].zero_grad()
+        discriminator_losses = self.criterion["discriminator"](**batch)
+        discriminator_loss_names = "discriminator_loss", "MPD_loss", "MSD_loss"
+        for i, loss_name in enumerate(discriminator_loss_names):
+            batch[loss_name] = discriminator_losses[i]
+        
+        if is_train:
+            batch["discriminator_loss"].backward()
+            self._clip_grad_norm(self.model.MPD)
+            self._clip_grad_norm(self.model.MSD)
+
+            self.optimizer["discriminator"].step()
+            if self.lr_scheduler["discriminator"] is not None:
+                if not isinstance(self.lr_scheduler["discriminator"], ReduceLROnPlateau):
+                    self.lr_scheduler["discriminator"].step()
+
+        batch["D_outputs"] = self.model.discriminate(**batch)
+
+        if is_train: self.optimizer["generator"].zero_grad()
         generator_losses = self.criterion["generator"](**batch)
         generator_loss_names = "generator_loss", "GAN_loss", "mel_loss", "fm_loss"
         for i, loss_name in enumerate(generator_loss_names):
             batch[loss_name] = generator_losses[i]
         
-        discriminator_losses = self.criterion["discriminator"](**batch)
-        discriminator_loss_names = "discriminator_loss", "MPD_loss", "MSD_loss"
-        for i, loss_name in enumerate(discriminator_loss_names):
-            batch[loss_name] = discriminator_losses[i]
-
         if is_train:
             batch["generator_loss"].backward()
-            batch["discriminator_loss"].backward()
-            self._clip_grad_norm()
+            self._clip_grad_norm(self.model.generator)
 
-            for model_name in ["generator", "discriminator"]:
-                self.optimizer[model_name].step()
-                self.optimizer[model_name].step()
-                if self.lr_scheduler[model_name] is not None:
-                    if not isinstance(self.lr_scheduler[model_name], ReduceLROnPlateau):
-                        self.lr_scheduler[model_name].step()
+            self.optimizer["generator"].step()
+            if self.lr_scheduler["generator"] is not None:
+                if not isinstance(self.lr_scheduler["generator"], ReduceLROnPlateau):
+                    self.lr_scheduler["generator"].step()
         
         for loss_name in generator_loss_names:
             metrics_tracker.update(loss_name, batch[loss_name].item())
@@ -245,3 +259,16 @@ class Trainer(BaseTrainer):
             return
         for metric_name in metric_tracker.keys():
             self.writer.add_scalar(f"{metric_name}", metric_tracker.avg(metric_name))
+
+    def pad_wavs(self, wav, wav_gen):
+        length_diff = wav_gen.shape[-1] - wav.shape[-1]
+
+        mel_config = self.config["preprocessing"]["mel_spec_config"]
+        max_length_diff = (mel_config["n_fft"] - mel_config["hop_length"]) // 2
+        assert abs(length_diff) < max_length_diff, f"Wrong generation shape, " \
+            f"wav.shape: {wav.shape}, wav_gen.shape: {wav_gen.shape}"
+        
+        wav = F.pad(wav, (0, max(0, length_diff)), 'constant', 0.)
+        wav_gen = F.pad(wav_gen, (0, max(0, -length_diff)), 'constant', 0.)
+
+        return wav, wav_gen

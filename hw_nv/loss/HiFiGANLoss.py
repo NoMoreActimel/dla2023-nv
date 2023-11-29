@@ -29,18 +29,21 @@ class HiFiGANGeneratorLoss(nn.Module):
             for output in chain(mpd_gen_outputs, msd_gen_outputs)
         )
 
-        mel_generated = self.mel_generator(wav_gen)
+        mel_generated = self.mel_generator(wav_gen.squeeze(1))
         generated_length = mel_generated.shape[-1]
-        mel, mel_generated = self.pad_mels(mel, mel_generated, length, generated_length)
+        mel, mel_generated = self.pad_mels(
+            mel, mel_generated,
+            torch.max(length).item(), generated_length
+        )
         mel_loss = self.alpha_mel_loss * self.mel_loss(mel, mel_generated)
 
         pmd_fm_loss = sum(
-            self.fm_loss(true_feat, true_feat)
-            for true_feat, true_feat in zip(mpd_true_layer_outputs, mpd_gen_layer_outputs)
+            self.fm_loss(true_feat, gen_feat)
+            for true_feat, gen_feat in zip(mpd_true_layer_outputs, mpd_gen_layer_outputs)
         )
         psd_fm_loss = sum(
-            self.fm_loss(true_feat, true_feat)
-            for true_feat, true_feat in zip(msd_true_layer_outputs, msd_gen_layer_outputs)
+            self.fm_loss(true_feat, gen_feat)
+            for true_feat, gen_feat in zip(msd_true_layer_outputs, msd_gen_layer_outputs)
         )
         fm_loss = self.alpha_fm_loss * (pmd_fm_loss + psd_fm_loss)
 
@@ -51,8 +54,8 @@ class HiFiGANGeneratorLoss(nn.Module):
         length_diff = length2 - length1
 
         silence_value = self.mel_generator.config.pad_value
-        mel1 = F.pad(mel1, (0, 0, max(0, length_diff)), 'constant', silence_value)
-        mel2 = F.pad(mel2, (0, 0, max(0, -length_diff)), 'constant', silence_value)
+        mel1 = F.pad(mel1, (0, max(0, length_diff)), 'constant', silence_value)
+        mel2 = F.pad(mel2, (0, max(0, -length_diff)), 'constant', silence_value)
 
         return mel1, mel2
 
@@ -69,13 +72,12 @@ class HiFiGANDiscriminatorLoss(nn.Module):
         msd_gen_outputs = D_outputs["gen"]["MSD_outputs"]
 
         mpd_loss = sum(
-            torch.mean((true_prob - 1) ** 2) + torch.mean((gen_prob - 1) ** 2)
+            torch.mean((true_prob - 1) ** 2) + torch.mean(gen_prob ** 2)
             for true_prob, gen_prob in zip(mpd_true_outputs, mpd_gen_outputs)
         )
         msd_loss = sum(
-            torch.mean((true_prob - 1) ** 2) + torch.mean((gen_prob - 1) ** 2)
+            torch.mean((true_prob - 1) ** 2) + torch.mean(gen_prob ** 2)
             for true_prob, gen_prob in zip(msd_true_outputs, msd_gen_outputs)
         )
 
         return mpd_loss + msd_loss, mpd_loss, msd_loss
-

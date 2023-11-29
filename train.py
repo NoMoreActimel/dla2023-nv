@@ -50,8 +50,7 @@ def main(config):
         ).to(device),
         "discriminator": config.init_obj(
             config["loss"]["discriminator"],
-            module_loss,
-            mel_generator=dataloaders["train"].dataset.melspec_generator
+            module_loss
         ).to(device)
     }
     metrics = [

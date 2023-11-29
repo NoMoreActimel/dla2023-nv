@@ -146,7 +146,8 @@ class LJspeechMelDataset(BaseDataset):
         batch["mel"] = [item["spectrogram"].transpose(1, 2).squeeze(0) for item in batch_items]
         batch["length"] = [item["length"] for item in batch_items]
 
-        batch["wav"] = pad_sequence(batch["wav"], batch_first=True)
+        batch["wav"] = pad_sequence(batch["wav"], batch_first=True).unsqueeze(1)
         batch["mel"] = pad_sequence(batch["mel"], batch_first=True).transpose(1, 2)
+        batch["length"] = torch.LongTensor(batch["length"])
 
         return batch

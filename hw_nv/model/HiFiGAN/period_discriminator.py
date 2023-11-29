@@ -52,7 +52,7 @@ class MultiPeriodDiscriminator(nn.Module):
         for discriminator in self.discriminators:
             output, layer_output = discriminator(input)
             outputs.append(output)
-            layer_outputs.append(layer_output)
+            layer_outputs += layer_output
         
         return outputs, layer_outputs
 

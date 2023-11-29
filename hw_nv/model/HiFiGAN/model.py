@@ -25,7 +25,7 @@ class HiFiGANModel(nn.Module):
 
         for input_type, input_name in zip(["true", "gen"], ["wav", "wav_gen"]):
             for D_name, D in zip(["MPD", "MSD"], [self.MPD, self.MSD]):
-                outputs, layer_outputs = D(batch[input_name])
+                outputs, layer_outputs = D(batch[input_name].detach())
                 result[input_type][f"{D_name}_outputs"] = outputs
                 result[input_type][f"{D_name}_layer_outputs"] = layer_outputs
 

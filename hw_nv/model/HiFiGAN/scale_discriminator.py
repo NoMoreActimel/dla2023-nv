@@ -68,7 +68,7 @@ class MultiScaleDiscriminator(nn.Module):
         for discriminator in self.discriminators:
             output, layer_output = discriminator(output)
             outputs.append(output)
-            layer_outputs.append(layer_output)
+            layer_outputs += layer_output
             output = self.pooling(output)
         
         return outputs, layer_outputs
@@ -113,7 +113,7 @@ class ScaleDiscriminator(nn.Module):
                 )
                 for ind, (channels, kernel, stride, group) in enumerate(zip(*layer_items))
             ],
-            nn.Conv2d(
+            nn.Conv1d(
                 in_channels=hidden_channels[-1],
                 out_channels=out_channels,
                 kernel_size=out_kernel_size,
