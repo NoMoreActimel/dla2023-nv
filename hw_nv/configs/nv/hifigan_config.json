@@ -147,7 +147,6 @@
       "visualize": "wandb",
       "wandb_project": "hifigan_project",
       "wandb_run_name": "baseline_test_run",
-      "len_epoch": 200,
-      "grad_norm_clip": 100
+      "len_epoch": 200
     }
   }
