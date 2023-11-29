@@ -6,6 +6,7 @@
       "preprocess_wavs": false,
       "generate_mels": false,
       "max_wav_value": 32768.0,
+      "max_wav_length": 8192,
       "mel_spec_config": {
         "sr": 22050,
         "win_length": 1024,
