@@ -151,6 +151,14 @@ class Trainer(BaseTrainer):
             if batch_idx >= self.len_epoch:
                 break
     
+        if self.lr_scheduler["discriminator"] is not None:
+            if not isinstance(self.lr_scheduler["discriminator"], ReduceLROnPlateau):
+                self.lr_scheduler["discriminator"].step()
+
+        if self.lr_scheduler["generator"] is not None:
+            if not isinstance(self.lr_scheduler["generator"], ReduceLROnPlateau):
+                self.lr_scheduler["generator"].step()
+        
         log = last_train_metrics
         return log
 
@@ -173,13 +181,11 @@ class Trainer(BaseTrainer):
         
         if is_train:
             batch["discriminator_loss"].backward()
+            # self._clip_grad_norm(self.model.MPD)
+            # self._clip_grad_norm(self.model.MSD)
             MPD_grad_norm = self.get_grad_norm("MPD")
             MSD_grad_norm = self.get_grad_norm("MSD")
-
             self.optimizer["discriminator"].step()
-            if self.lr_scheduler["discriminator"] is not None:
-                if not isinstance(self.lr_scheduler["discriminator"], ReduceLROnPlateau):
-                    self.lr_scheduler["discriminator"].step()
 
         batch["D_outputs"] = self.model.discriminate(**batch)
 
@@ -191,12 +197,9 @@ class Trainer(BaseTrainer):
         
         if is_train:
             batch["generator_loss"].backward()
+            # self._clip_grad_norm(self.model.generator)
             generator_grad_norm = self.get_grad_norm("generator")
-
             self.optimizer["generator"].step()
-            if self.lr_scheduler["generator"] is not None:
-                if not isinstance(self.lr_scheduler["generator"], ReduceLROnPlateau):
-                    self.lr_scheduler["generator"].step()
         
         for loss_name in generator_loss_names:
             metrics_tracker.update(loss_name, batch[loss_name].item())

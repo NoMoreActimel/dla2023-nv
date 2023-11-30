@@ -82,7 +82,7 @@ class Generator(nn.Module):
                 )
                 for ind, stride in enumerate(self.upsample_strides)
             ],
-            nn.LeakyReLU(),
+            nn.LeakyReLU(0.1),
             nn.Conv1d(
                 in_channels=self.hidden_channels // (2 ** len(self.upsample_strides)),
                 out_channels=self.out_channels,
