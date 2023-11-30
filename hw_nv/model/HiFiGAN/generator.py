@@ -21,15 +21,19 @@ class Generator(nn.Module):
             binding_conv_kernel_size: kernel size of input and output convolutions, defaults to 7
 
             apply_weight_norm: whether to apply weight normalization 
-            at each Conv1d and ConvTranspose1d layer, default is True
+                at each Conv1d and ConvTranspose1d layer, default is True
             
             upsample_strides: list of strides for upsampling ConvTranspose1d blocks,
-            defaults to [8, 8, 2, 2]
+                defaults to [8, 8, 2, 2]
             kernel sizes for ConvTranpose1d blocks would be taken as 2 * upsample_strides
 
             in model_config["generator"]["MRF"]:
-            kenrels: list of kernel sizes for MRF blocks, 1 kernel size for each block
-            dilations: list of dilations lists for MRF blocks, 1 list of dilations for each block
+            kenrels: list of kernel sizes for MRF blocks,
+                1 kernel size for each block,
+                defaults to [3, 7, 11]
+            dilations: list of dilations lists for MRF blocks, 
+                1 list of dilations for each block,
+                defauls to [[1, 3, 5], [1, 3, 5], [1, 3, 5]]
         """
         super().__init__()
         self.model_config = model_config
@@ -61,29 +65,31 @@ class Generator(nn.Module):
         )
 
         self.layers = nn.Sequential(*[
-            nn.Sequential(
-                nn.ConvTranspose1d(
-                    in_channels=self.hidden_channels // (2 ** ind),
-                    out_channels=self.hidden_channels // (2 ** (ind + 1)),
-                    kernel_size=stride * 2,
-                    stride=stride,
-                    padding=get_transposed_padding(stride * 2, stride),
-                    output_padding=get_transposed_output_padding(stride * 2, stride)
-                ),
-                MRF(
-                    channels=self.hidden_channels // (2 ** (ind + 1)),
-                    kernels=self.mrf_kernels,
-                    dilations=self.mrf_dilations
+                nn.Sequential(
+                    nn.ConvTranspose1d(
+                        in_channels=self.hidden_channels // (2 ** ind),
+                        out_channels=self.hidden_channels // (2 ** (ind + 1)),
+                        kernel_size=stride * 2,
+                        stride=stride,
+                        padding=get_transposed_padding(stride * 2, stride),
+                        output_padding=get_transposed_output_padding(stride * 2, stride)
+                    ),
+                    MRF(
+                        channels=self.hidden_channels // (2 ** (ind + 1)),
+                        kernels=self.mrf_kernels,
+                        dilations=self.mrf_dilations
+                    )
                 )
-            )
-            for ind, stride in enumerate(self.upsample_strides)
-        ])
-
-        self.output_conv = nn.Conv1d(
-            in_channels=self.hidden_channels // (2 ** len(self.upsample_strides)),
-            out_channels=self.out_channels,
-            kernel_size=self.binding_conv_kernel_size,
-            padding=get_padding(self.binding_conv_kernel_size, 1)
+                for ind, stride in enumerate(self.upsample_strides)
+            ],
+            nn.LeakyReLU(),
+            nn.Conv1d(
+                in_channels=self.hidden_channels // (2 ** len(self.upsample_strides)),
+                out_channels=self.out_channels,
+                kernel_size=self.binding_conv_kernel_size,
+                padding=get_padding(self.binding_conv_kernel_size, 1)
+            ),
+            nn.Tanh()
         )
 
         self.apply_weight_norm = self.generator_config.get("apply_weight_norm", True)
@@ -100,7 +106,6 @@ class Generator(nn.Module):
     def forward(self, input):
         output = self.input_conv(input)
         output = self.layers(output)
-        output = self.output_conv(output)
         return output
 
 
