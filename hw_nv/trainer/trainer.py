@@ -173,42 +173,45 @@ class Trainer(BaseTrainer):
         
         batch["D_outputs"] = self.model.discriminate(**batch)
 
-        if is_train: self.optimizer["discriminator"].zero_grad()
+        if not is_train:        
+            for met in self.metrics:
+                metrics_tracker.update(met.name, met(**batch))
+            return batch
+
+        self.optimizer["discriminator"].zero_grad()
         discriminator_losses = self.criterion["discriminator"](**batch)
         discriminator_loss_names = "discriminator_loss", "MPD_loss", "MSD_loss"
         for i, loss_name in enumerate(discriminator_loss_names):
             batch[loss_name] = discriminator_losses[i]
-        
-        if is_train:
-            batch["discriminator_loss"].backward()
-            # self._clip_grad_norm(self.model.MPD)
-            # self._clip_grad_norm(self.model.MSD)
-            MPD_grad_norm = self.get_grad_norm("MPD")
-            MSD_grad_norm = self.get_grad_norm("MSD")
-            self.optimizer["discriminator"].step()
+    
+        batch["discriminator_loss"].backward()
+        # self._clip_grad_norm(self.model.MPD)
+        # self._clip_grad_norm(self.model.MSD)
+        MPD_grad_norm = self.get_grad_norm("MPD")
+        MSD_grad_norm = self.get_grad_norm("MSD")
+        self.optimizer["discriminator"].step()
 
         batch["D_outputs"] = self.model.discriminate(**batch)
 
-        if is_train: self.optimizer["generator"].zero_grad()
+        self.optimizer["generator"].zero_grad()
         generator_losses = self.criterion["generator"](**batch)
         generator_loss_names = "generator_loss", "GAN_loss", "mel_loss", "fm_loss"
         for i, loss_name in enumerate(generator_loss_names):
             batch[loss_name] = generator_losses[i]
-        
-        if is_train:
-            batch["generator_loss"].backward()
-            # self._clip_grad_norm(self.model.generator)
-            generator_grad_norm = self.get_grad_norm("generator")
-            self.optimizer["generator"].step()
-        
+    
+        batch["generator_loss"].backward()
+        # self._clip_grad_norm(self.model.generator)
+        generator_grad_norm = self.get_grad_norm("generator")
+        self.optimizer["generator"].step()
+    
         for loss_name in generator_loss_names:
             metrics_tracker.update(loss_name, batch[loss_name].item())
         for loss_name in discriminator_loss_names:
             metrics_tracker.update(loss_name, batch[loss_name].item())
-        if is_train:
-            metrics_tracker.update("generator_grad_norm", generator_grad_norm)
-            metrics_tracker.update("MPD_grad_norm", MPD_grad_norm)
-            metrics_tracker.update("MSD_grad_norm", MSD_grad_norm)
+        
+        metrics_tracker.update("generator_grad_norm", generator_grad_norm)
+        metrics_tracker.update("MPD_grad_norm", MPD_grad_norm)
+        metrics_tracker.update("MSD_grad_norm", MSD_grad_norm)
 
         for met in self.metrics:
             metrics_tracker.update(met.name, met(**batch))
