@@ -68,6 +68,8 @@ class LJspeechMelDataset(BaseDataset):
                 mel_generator=self.melspec_generator,
                 mel_config=self.melspec_config
             )
+        
+        self.limit = self.prep_config.get("limit", None)
 
         self.wav_dir = self.data_dir / "wavs"
         self.spec_dir = self.data_dir / "specs"
@@ -138,6 +140,8 @@ class LJspeechMelDataset(BaseDataset):
             t_info = torchaudio.info(str(self.wav_dir / wav_filename))
             length = t_info.num_frames / t_info.sample_rate
             index.append({"name": name, "audio_length": length})
+            if i + 1 == self.limit:
+                break
         return index
 
     def collate_fn(self, batch_items):
