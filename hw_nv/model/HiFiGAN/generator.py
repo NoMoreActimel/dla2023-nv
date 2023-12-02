@@ -95,13 +95,31 @@ class Generator(nn.Module):
         self.apply_weight_norm = self.generator_config.get("apply_weight_norm", True)
         if self.apply_weight_norm:
             self.weight_norm()
+        
+        self.reset_parameters()
     
     def weight_norm(self):
         def _weight_norm(module):
-            if isinstance(module, nn.Conv1d) or isinstance(module, nn.ConvTranspose1d):
+            if isinstance(module, (nn.Conv1d, nn.ConvTranspose1d)):
                 nn.utils.weight_norm(module)
+                print(f"Applied weight_norm to {module}")
 
         self.apply(_weight_norm)
+    
+    def remove_weight_norm(self):
+        def _remove_weight_norm(module):
+            try: nn.utils.remove_weight_norm(module)
+            except ValueError: return
+        
+        self.apply(_remove_weight_norm)
+        
+    def reset_parameters(self):
+        def _reset_parameters(module):
+            if isinstance(module, (nn.Conv1d, nn.ConvTranspose1d)):
+                module.weight.data.normal_(0.0, 0.01)
+                print(f"Reset parameters in {module} to normal(0.0, 0.01)")
+
+        self.apply(_reset_parameters)
 
     def forward(self, input):
         output = self.input_conv(input)

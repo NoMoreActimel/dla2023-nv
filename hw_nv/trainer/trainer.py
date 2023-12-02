@@ -191,9 +191,9 @@ class Trainer(BaseTrainer):
         MSD_grad_norm = self.get_grad_norm("MSD")
         self.optimizer["discriminator"].step()
 
+        self.optimizer["generator"].zero_grad()
         batch["D_outputs"] = self.model.discriminate(**batch)
 
-        self.optimizer["generator"].zero_grad()
         generator_losses = self.criterion["generator"](**batch)
         generator_loss_names = "generator_loss", "GAN_loss", "mel_loss", "fm_loss"
         for i, loss_name in enumerate(generator_loss_names):
