@@ -171,6 +171,7 @@ class Trainer(BaseTrainer):
         if batch["wav_gen"].shape[-1] != batch["wav"].shape[-1]:
             batch["wav"], batch["wav_gen"] = self.pad_wavs(batch["wav"], batch["wav_gen"])
         
+        self.optimizer["discriminator"].zero_grad()
         batch["D_outputs"] = self.model.discriminate(**batch)
 
         if not is_train:        
@@ -178,7 +179,6 @@ class Trainer(BaseTrainer):
                 metrics_tracker.update(met.name, met(**batch))
             return batch
 
-        self.optimizer["discriminator"].zero_grad()
         discriminator_losses = self.criterion["discriminator"](**batch)
         discriminator_loss_names = "discriminator_loss", "MPD_loss", "MSD_loss"
         for i, loss_name in enumerate(discriminator_loss_names):
