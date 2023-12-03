@@ -172,7 +172,7 @@ class Trainer(BaseTrainer):
             batch["wav"], batch["wav_gen"] = self.pad_wavs(batch["wav"], batch["wav_gen"])
         
         self.optimizer["discriminator"].zero_grad()
-        batch["D_outputs"] = self.model.discriminate(**batch)
+        batch["D_outputs"] = self.model.discriminate(wav=batch["wav"], wav_gen=batch["wav_gen"].detach())
 
         if not is_train:        
             for met in self.metrics:
@@ -192,7 +192,7 @@ class Trainer(BaseTrainer):
         self.optimizer["discriminator"].step()
 
         self.optimizer["generator"].zero_grad()
-        batch["D_outputs"] = self.model.discriminate(**batch)
+        batch["D_outputs"] = self.model.discriminate(wav=batch["wav"], wav_gen=batch["wav_gen"])
 
         generator_losses = self.criterion["generator"](**batch)
         generator_loss_names = "generator_loss", "GAN_loss", "mel_loss", "fm_loss"

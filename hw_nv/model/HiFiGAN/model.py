@@ -21,12 +21,12 @@ class HiFiGANModel(nn.Module):
     def forward(self, **batch):
         return self.generator(batch["mel"])
 
-    def discriminate(self, **batch):
+    def discriminate(self, wav, wav_gen):
         result = {"true": {}, "gen": {}}
 
-        for input_type, input_name in zip(["true", "gen"], ["wav", "wav_gen"]):
+        for input_type, input in zip(["true", "gen"], [wav, wav_gen]):
             for D_name, D in zip(["MPD", "MSD"], [self.MPD, self.MSD]):
-                outputs, layer_outputs = D(batch[input_name].detach())
+                outputs, layer_outputs = D(input)
                 result[input_type][f"{D_name}_outputs"] = outputs
                 result[input_type][f"{D_name}_layer_outputs"] = layer_outputs
 
