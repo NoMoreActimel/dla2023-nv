@@ -1,3 +1,4 @@
+import json
 import torch
 import numpy as np
 
@@ -11,10 +12,7 @@ def move_batch_to_device(batch, device: torch.device):
     """
     Move all necessary tensors to the HPU
     """
-    for tensor_for_gpu in [
-        "src_seq", "src_pos", "mel_target", "mel_pos", 
-        "duration_target", "pitch_target", "energy_target"
-    ]:
+    for tensor_for_gpu in ["mel", "wav"]:
         batch[tensor_for_gpu] = batch[tensor_for_gpu].to(device)
     
     return batch
@@ -24,58 +22,50 @@ def run_inference(
         model,
         dataset,
         indices,
-        waveglow_path,
+        inference_path,
+        compute_losses=False,
+        output_loss_filepath=None,
+        criterion=None,
         dataset_type="train",
-        inference_path="",
-        duration_coeffs=[1.0],
-        pitch_coeffs=[1.0],
-        energy_coeffs=[1.0],
         epoch=None
     ):
     inference_path = Path(inference_path) / dataset_type
     inference_path.mkdir(exist_ok=True, parents=True)
-
     inference_paths = [inference_path / f"utterance_{ind}" for ind in indices]
     
     for i, path in enumerate(inference_paths):
         if epoch is not None:
-            inference_paths[i] = path / f"epoch{epoch}"
+            inference_paths[i] = path / f"epoch_{epoch}"
         inference_paths[i].mkdir(exist_ok=True, parents=True)
+    
+    if compute_losses:
+        output_loss_filepath = Path(output_loss_filepath) / dataset_type
+        output_loss_filepath.mkdir(exist_ok=True, parents=True)
 
-    WaveGlow = get_WaveGlow(waveglow_path)
 
     dataset_items = [dataset[ind] for ind in indices]
     batch = dataset.collate_fn(dataset_items)
     batch = move_batch_to_device(batch, device='cuda:0')
 
-    paths = []
+    with torch.no_grad():
+        batch["wav_gen"] = model(**batch)
+        batch["D_outputs"] = model.discriminate(wav=batch["wav"], wav_gen=batch["wav_gen"])
+        
+        if compute_losses:
+            discriminator_losses = criterion["discriminator"](**batch)
+            discriminator_loss_names = "discriminator_loss", "MPD_loss", "MSD_loss"
+            for i, loss_name in enumerate(discriminator_loss_names):
+                batch[loss_name] = discriminator_losses[i]
 
-    for duration_coeff in duration_coeffs:
-        for pitch_coeff in pitch_coeffs:
-            for energy_coeff in energy_coeffs:
-                with torch.no_grad():
-                    print(batch["src_seq"].shape)
-                    print(batch["src_pos"].shape)
-                    output = model.forward(**{
-                        "src_seq": batch["src_seq"],
-                        "src_pos": batch["src_pos"],
-                        "duration_coeff": duration_coeff,
-                        "pitch_coeff": pitch_coeff,
-                        "energy_coeff": energy_coeff
-                    })
-                
-                mel_predicts = output["mel_predict"].transpose(1, 2)
+            generator_losses = criterion["generator"](**batch)
+            generator_loss_names = "generator_loss", "GAN_loss", "mel_loss", "fm_loss"
+            for i, loss_name in enumerate(generator_loss_names):
+                batch[loss_name] = generator_losses[i]
+            
+            with open(output_loss_filepath, 'w', encoding='utf-8') as f:
+                json.dump(output_loss_filepath, f, ensure_ascii=False, indent=4)    
 
-                for i, (ind, mel_predict) in enumerate(zip(indices, mel_predicts)):
-                    filename =  f"duration={duration_coeff}_pitch={pitch_coeff}_" \
-                                f"energy={energy_coeff}"
-
-                    np.save(inference_paths[i] / (filename + ".spec"), mel_predict.cpu())
-                    waveglow.inference(
-                        mel_predict.unsqueeze(0),
-                        WaveGlow,
-                        inference_paths[i] / (filename + ".wav")
-                    )
-                    paths.append(path)
-    
-    return paths
+    for i, (ind, wav, wav_gen) in enumerate(zip(indices, batch["wav"], batch["wav_gen"])):
+        np.save(inference_paths[i] / f"wav_gen_{ind}.wav", wav_gen.cpu())
+        np.save(inference_paths[i] / f"wav_{ind}.wav", wav.cpu())
+        print(f"Saved utterance {ind} wav and wav_gen to {inference_paths[i]}")
