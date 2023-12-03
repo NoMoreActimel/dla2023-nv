@@ -7,10 +7,10 @@ import torch
 from tqdm import tqdm
 
 import hw_nv.loss as module_loss
-import hw_tts.model as module_model
-from hw_tts.utils import ROOT_PATH
-from hw_tts.utils.object_loading import get_dataloaders
-from hw_tts.utils.parse_config import ConfigParser
+import hw_nv.model as module_model
+from hw_nv.utils import ROOT_PATH
+from hw_nv.utils.object_loading import get_dataloaders
+from hw_nv.utils.parse_config import ConfigParser
 from inference import run_inference
 
 DEFAULT_CHECKPOINT_PATH = ROOT_PATH / "default_test_model" / "checkpoint.pth"
