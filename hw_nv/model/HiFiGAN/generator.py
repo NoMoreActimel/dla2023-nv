@@ -82,14 +82,12 @@ class Generator(nn.Module):
                 )
                 for ind, stride in enumerate(self.upsample_strides)
             ],
-            nn.LeakyReLU(0.1),
             nn.Conv1d(
                 in_channels=self.hidden_channels // (2 ** len(self.upsample_strides)),
                 out_channels=self.out_channels,
                 kernel_size=self.binding_conv_kernel_size,
                 padding=get_padding(self.binding_conv_kernel_size, 1)
-            ),
-            nn.Tanh()
+            )
         )
 
         self.apply_weight_norm = self.generator_config.get("apply_weight_norm", True)
